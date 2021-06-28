@@ -2,9 +2,11 @@ package whatsapp
 
 import (
 	"fmt"
-	"github.com/Rhymen/go-whatsapp/binary"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/Rhymen/go-whatsapp/binary"
 )
 
 type Presence string
@@ -240,4 +242,81 @@ func buildParticipantNodes(participants []string) []binary.Node {
 		}
 	}
 	return p
+}
+
+func (wac *Conn) BlockContact(jid string) (<-chan string, error) {
+	return wac.handleBlockContact("add", jid)
+}
+
+func (wac *Conn) UnblockContact(jid string) (<-chan string, error) {
+	return wac.handleBlockContact("remove", jid)
+}
+
+func (wac *Conn) handleBlockContact(action, jid string) (<-chan string, error) {
+	ts := time.Now().Unix()
+	tag := fmt.Sprintf("%d.--%d", ts, wac.msgCount)
+
+	netsplit := strings.Split(jid, "@")
+	cusjid := netsplit[0] + "@c.us"
+
+	n := binary.Node{
+		Description: "action",
+		Attributes: map[string]string{
+			"type":  "set",
+			"epoch": strconv.Itoa(wac.msgCount),
+		},
+		Content: []interface{}{
+			binary.Node{
+				Description: "block",
+				Attributes: map[string]string{
+					"type": action,
+				},
+				Content: []binary.Node{
+					{
+						Description: "user",
+						Attributes: map[string]string{
+							"jid": cusjid,
+						},
+						Content: nil,
+					},
+				},
+			},
+		},
+	}
+
+	return wac.writeBinary(n, contact, ignore, tag)
+}
+
+// Search product details on order
+func (wac *Conn) SearchProductDetails(id, orderId, token string) (<-chan string, error) {
+	data := []interface{}{"query", "order", map[string]string{
+		"id":          id,
+		"orderId":     orderId,
+		"imageHeight": strconv.Itoa(80),
+		"imageWidth":  strconv.Itoa(80),
+		"token":       token,
+	}}
+	return wac.writeJson(data)
+}
+
+// Order search and get product catalog reh
+func (wac *Conn) SearchOrder(catalogWid, stanzaId string) (<-chan string, error) {
+	data := []interface{}{"query", "bizCatalog", map[string]string{
+		"catalogWid": catalogWid,
+		"limit":      strconv.Itoa(10),
+		"height":     strconv.Itoa(100),
+		"width":      strconv.Itoa(100),
+		"stanza_id":  stanzaId,
+		"type":       "get_product_catalog_reh",
+	}}
+	return wac.writeJson(data)
+}
+
+// Company details for Whatsapp Business
+func (wac *Conn) BusinessProfile(wid string) (<-chan string, error) {
+	query := map[string]string{
+		"wid": wid,
+	}
+	data := []interface{}{"query", "businessProfile", []map[string]string{query}}
+	return wac.writeJson(data)
 }
